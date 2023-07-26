@@ -1,3 +1,4 @@
+import pandas as pd
 import numpy as np
 from scipy.spatial import distance
 
@@ -10,7 +11,7 @@ HAND_JOINTS = ['0 WRIST',
 
 POSE_POINTS = [
     '1 NOSE',
-    '2 LEFT_EYE_INNER', '3 LEFT_EYE', '4 LEFT_EYE_OUTER', 
+    '2 LEFT_EYE_INNER', '3 LEFT_EYE', '4 LEFT_EYE_OUTER',
     '5 RIGHT_EYE_INNER', '6 RIGHT_EYE', '7 RIGHT_EYE_OUTER',
     '8 LEFT_EAR', '9 RIGHT_EAR',
     '10 MOUTH_LEFT', '11 MOUTH_RIGHT',
@@ -22,9 +23,14 @@ POSE_POINTS = [
 
 def getCoordinates(p): return np.array([p.x, p.y, p.z])
 
-def getDistance(v1, v2): return np.sqrt(np.dot((v1[:-1] - v2[:-1]).T, v1[:-1] - v2[:-1]))
 
-def is_periodic(diffs, value, tolerance=0): return all(d-tolerance <= value <= d+tolerance for d in diffs)
+def getDistance(v1, v2): return np.sqrt(
+    np.dot((v1[:-1] - v2[:-1]).T, v1[:-1] - v2[:-1]))
+
+
+def is_periodic(diffs, value, tolerance=0): return all(
+    d-tolerance <= value <= d+tolerance for d in diffs)
+
 
 def getJointAngle(x):
 
@@ -54,15 +60,13 @@ class SignLanguagePhonology():
 
         # TODO: ADD HANDEDNESS
         # TODO: ADD TWO-HANDED CORRELATION (SYMMETRY / ASSYMETRY / CONTACT)
+        # Face
+        # TODO: ADD NON-MANUAL MARKERS
+        # mp_drawing.draw_landmarks(image, results.face_landmarks, mp_holistic.FACEMESH_TESSELATION)
+      
 
-    def getJointInfo(self, results, selected):
+    def getJointInfo(self, hand, body_pose, selected):
         """Extracting static information from sign shape including:
-            - Handshape
-                - [x] selected fingers
-                - [ ] aperature
-                - FIXME: Selected finger regarding relaxed hand
-            - Orientation
-                - 
 
         Args:
             results (Landmark): set of lanf
@@ -74,11 +78,11 @@ class SignLanguagePhonology():
         marks = []
         logs = []
 
-        if results.right_hand_landmarks:
+        if hand:
 
             center = []
 
-            for joint, point in zip(HAND_JOINTS, list(results.right_hand_landmarks.landmark)):
+            for joint, point in zip(HAND_JOINTS, list(hand.landmark)):
                 marks.append((joint, {
                     'x': point.x,
                     'y': point.y,
@@ -99,14 +103,15 @@ class SignLanguagePhonology():
             self.DIFF.append(getDistance(self.CENTER[-1], center))
             self.CENTER.append(center)
             center = np.array(getCoordinates(
-                results.right_hand_landmarks.landmark[8]))
+                hand.landmark[8]))
 
             INFO = {
-                'LOCATION': self.getLocation(center, results),
+                'LOCATION': self.getLocation(center, body_pose),
                 'ORIENTATION': self.getOrientation(marks),
                 'FINGER_SELECTION': self.getFingerConfiguration(marks),
             }
-            INFO['MOVEMENT'] = self.getMovementFeatures(INFO.get('FINGER_SELECTION'))
+            INFO['MOVEMENT'] = self.getMovementFeatures(
+                INFO.get('FINGER_SELECTION'))
 
             for select_ in selected:
                 logs.append(INFO[select_])
@@ -198,25 +203,25 @@ class SignLanguagePhonology():
 
         return {'ORIENTATION': orientation}
 
-    def getLocation(self, center, results):
+    def getLocation(self, center, body_pose):
 
         # TODO: ADD MAJOR/MINOR LOCATION
 
         # FIXME: CHANGE TO MEAN(POINTS_X)
-        locations = {
+        body_poses = {
             # LEFT
-            'EYE': (getCoordinates(results.pose_landmarks.landmark[3]), getDistance(center, getCoordinates(results.pose_landmarks.landmark[3]))),
+            'EYE': (getCoordinates(body_pose.landmark[3]), getDistance(center, getCoordinates(body_pose.landmark[3]))),
             # LEFT
-            'EAR': (getCoordinates(results.pose_landmarks.landmark[7]), getDistance(center, getCoordinates(results.pose_landmarks.landmark[7]))),
+            'EAR': (getCoordinates(body_pose.landmark[7]), getDistance(center, getCoordinates(body_pose.landmark[7]))),
             # LEFT
-            'NOSE': (getCoordinates(results.pose_landmarks.landmark[0]), getDistance(center, getCoordinates(results.pose_landmarks.landmark[0]))),
+            'NOSE': (getCoordinates(body_pose.landmark[0]), getDistance(center, getCoordinates(body_pose.landmark[0]))),
             # LEFT
-            'MOUTH': (getCoordinates(results.pose_landmarks.landmark[9]), getDistance(center, getCoordinates(results.pose_landmarks.landmark[9]))),
+            'MOUTH': (getCoordinates(body_pose.landmark[9]), getDistance(center, getCoordinates(body_pose.landmark[9]))),
             # LEFT
-            'CHEST': (getCoordinates(results.pose_landmarks.landmark[11]), getDistance(center, getCoordinates(results.pose_landmarks.landmark[11]))),
+            'CHEST': (getCoordinates(body_pose.landmark[11]), getDistance(center, getCoordinates(body_pose.landmark[11]))),
         }
 
-        return dict(sorted(locations.items(), key=lambda x: x[1][1]))
+        return dict(sorted(body_poses.items(), key=lambda x: x[1][1]))
 
     def getMovementFeatures(self, marks):
 
@@ -242,3 +247,46 @@ class SignLanguagePhonology():
         self.START.append(self.SWITCH)
 
         return logs
+
+    def getMovementInformation(self, view_window, window_size, metrics):
+
+        Center_Diff = self.DIFF[-view_window:]
+
+        Center_MovAVG_x = pd.Series(np.array(
+            self.CENTER[-view_window:])[:, 0]).rolling(window_size).mean().tolist()
+        Center_MovAVG_y = pd.Series(np.array(
+            self.CENTER[-view_window:])[:, 1]).rolling(window_size).mean().tolist()
+        Center_MovAVG_z = pd.Series(np.array(
+            self.CENTER[-view_window:])[:, 2]).rolling(window_size).mean().tolist()
+        
+        
+        Aperture_MovAVG_0 = pd.Series(np.array(
+            self.APERTURE[-view_window:])[:, 0] / 180 ).rolling(window_size).mean().tolist()
+        Aperture_MovAVG_1 = pd.Series(np.array(
+            self.APERTURE[-view_window:])[:, 1] / 180 ).rolling(window_size).mean().tolist()
+        Aperture_MovAVG_2 = pd.Series(np.array(
+            self.APERTURE[-view_window:])[:, 2] / 180 ).rolling(window_size).mean().tolist()
+        Aperture_MovAVG_3 = pd.Series(np.array(
+            self.APERTURE[-view_window:])[:, 3] / 180 ).rolling(window_size).mean().tolist()
+
+        SWITCH = self.START[-view_window:]
+
+        min_len = min(
+            len(Center_Diff),
+            len(Center_MovAVG_x),
+            len(Aperture_MovAVG_0),
+            len(SWITCH))
+
+        INFO = {}
+
+        if 'Center_Diff' in metrics: INFO['Center_Diff'] = Center_Diff[:min_len]
+        if 'Center_MovAVG_x' in metrics: INFO['Center_MovAVG_x'] = Center_MovAVG_x[:min_len]
+        if 'Center_MovAVG_y' in metrics: INFO['Center_MovAVG_y'] = Center_MovAVG_y[:min_len]
+        if 'Center_MovAVG_z' in metrics: INFO['Center_MovAVG_z'] = Center_MovAVG_z[:min_len]
+        if 'INDEX_FINGER' in metrics: INFO['INDEX_FINGER'] = Aperture_MovAVG_0[:min_len]
+        if 'MIDDLE_FINGER' in metrics: INFO['MIDDLE_FINGER'] = Aperture_MovAVG_1[:min_len]
+        if 'RING_FINGER' in metrics: INFO['RING_FINGER'] = Aperture_MovAVG_2[:min_len]
+        if 'PINKY' in metrics: INFO['PINKY'] = Aperture_MovAVG_3[:min_len]
+        if 'SWITCH' in metrics: INFO['SWITCH'] = SWITCH[:min_len]
+
+        return pd.DataFrame(INFO)

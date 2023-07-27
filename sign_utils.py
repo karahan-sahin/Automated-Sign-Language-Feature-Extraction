@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from scipy.spatial import distance
+from scipy.linalg import lstsq
 
 HAND_JOINTS = ['0 WRIST',
                '1 THUMB_CMC', '2 THUMB_MCP', '3 THUMB_IP', '4 THUMB_TIP',
@@ -47,23 +48,33 @@ def getJointAngle(x):
     return np.degrees(angle)
 
 
+def getJointAngleNP(a, b, c):
+
+    ba = a - b
+    bc = c - b
+
+    cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+    angle = np.arccos(cosine_angle)
+
+    return np.degrees(angle)
+
+
 class SignLanguagePhonology():
-    def __init__(self) -> None:
+    def __init__(self, hand) -> None:
+
+        self.HAND = hand
 
         self.CENTER = [np.array([0, 0, 0])]
         self.APERTURE = [np.array([0, 0, 0, 0])]
         self.DIFF = []
 
-        self.CURR = 0
+        self.CURR_START = 0
+        self.PATH_ANGLE = []
         self.SWITCH = 0
         self.START = []
 
-        # TODO: ADD HANDEDNESS
-        # TODO: ADD TWO-HANDED CORRELATION (SYMMETRY / ASSYMETRY / CONTACT)
-        # Face
         # TODO: ADD NON-MANUAL MARKERS
         # mp_drawing.draw_landmarks(image, results.face_landmarks, mp_holistic.FACEMESH_TESSELATION)
-      
 
     def getJointInfo(self, hand, body_pose, selected):
         """Extracting static information from sign shape including:
@@ -184,10 +195,10 @@ class SignLanguagePhonology():
 
         if (marks[4][1]['x'] - marks[17][1]['x']) + (marks[4][1]['y'] - marks[17][1]['y']) > 0.00:
             orientation.append(
-                ('palm', marks[4][1]['x'] - marks[17][1]['x'], marks[4][1]['y'] - marks[17][1]['y']))
+                ('palm' if self.HAND == 'right' else 'back', marks[4][1]['x'] - marks[17][1]['x'], marks[4][1]['y'] - marks[17][1]['y']))
         else:
             orientation.append(
-                ('back', marks[4][1]['x'] - marks[17][1]['x'], marks[4][1]['y'] - marks[17][1]['y']))
+                ('back' if self.HAND == 'right' else 'palm', marks[4][1]['x'] - marks[17][1]['x'], marks[4][1]['y'] - marks[17][1]['y']))
 
         # FIXME: Error at wrist (z axis problem)
         if marks[0][1]['z'] > marks[9][1]['z']:
@@ -228,9 +239,12 @@ class SignLanguagePhonology():
         logs = []
 
         # FIXME: SIGN BOUNDARY -> TRAINABLE PARAMETER
+        # TODO: SIGN BOUNDARY
+        # - BY SELECT FINGER CHANGE ( SELECTED FINGER CONSTRAINT )
+        # - BY MAJOR LOCATION CHANGE ( MAJOR LOCATION CONSTRAINT )
         if np.mean(self.DIFF[-3:]) > 0.007:
             self.SWITCH = 1
-            self.CURR += 1
+            self.CURR_START += 1
 
             # Direction
             logs.append(
@@ -240,9 +254,20 @@ class SignLanguagePhonology():
             logs.append({'APERTURE': 'opening' if sum(
                 self.APERTURE[-1] - self.APERTURE[-2]) > 0 else 'closing'})
 
+            SELECTED = self.CENTER[-self.CURR_START:]
+            
+            if len(SELECTED) > 3:    
+                self.PATH_ANGLE.append(getJointAngleNP(
+                    np.array(SELECTED[0])[:2], np.array(SELECTED[round(len(SELECTED) / 2)])[:2], np.array(SELECTED[-1])[:2]))
+
+                MPA = np.mean(self.PATH_ANGLE)
+                logs.append(
+                    { 'PATH_ANGLE': ('curve' if MPA < 90 else 'straight', MPA) })
+
         else:
-            self.CURR = 0
+            self.CURR_START = 0
             self.SWITCH = 0
+            self.PATH_ANGLE = []
 
         self.START.append(self.SWITCH)
 
@@ -258,16 +283,15 @@ class SignLanguagePhonology():
             self.CENTER[-view_window:])[:, 1]).rolling(window_size).mean().tolist()
         Center_MovAVG_z = pd.Series(np.array(
             self.CENTER[-view_window:])[:, 2]).rolling(window_size).mean().tolist()
-        
-        
+
         Aperture_MovAVG_0 = pd.Series(np.array(
-            self.APERTURE[-view_window:])[:, 0] / 180 ).rolling(window_size).mean().tolist()
+            self.APERTURE[-view_window:])[:, 0] / 180).rolling(window_size).mean().tolist()
         Aperture_MovAVG_1 = pd.Series(np.array(
-            self.APERTURE[-view_window:])[:, 1] / 180 ).rolling(window_size).mean().tolist()
+            self.APERTURE[-view_window:])[:, 1] / 180).rolling(window_size).mean().tolist()
         Aperture_MovAVG_2 = pd.Series(np.array(
-            self.APERTURE[-view_window:])[:, 2] / 180 ).rolling(window_size).mean().tolist()
+            self.APERTURE[-view_window:])[:, 2] / 180).rolling(window_size).mean().tolist()
         Aperture_MovAVG_3 = pd.Series(np.array(
-            self.APERTURE[-view_window:])[:, 3] / 180 ).rolling(window_size).mean().tolist()
+            self.APERTURE[-view_window:])[:, 3] / 180).rolling(window_size).mean().tolist()
 
         SWITCH = self.START[-view_window:]
 
@@ -279,14 +303,72 @@ class SignLanguagePhonology():
 
         INFO = {}
 
-        if 'Center_Diff' in metrics: INFO['Center_Diff'] = Center_Diff[:min_len]
-        if 'Center_MovAVG_x' in metrics: INFO['Center_MovAVG_x'] = Center_MovAVG_x[:min_len]
-        if 'Center_MovAVG_y' in metrics: INFO['Center_MovAVG_y'] = Center_MovAVG_y[:min_len]
-        if 'Center_MovAVG_z' in metrics: INFO['Center_MovAVG_z'] = Center_MovAVG_z[:min_len]
-        if 'INDEX_FINGER' in metrics: INFO['INDEX_FINGER'] = Aperture_MovAVG_0[:min_len]
-        if 'MIDDLE_FINGER' in metrics: INFO['MIDDLE_FINGER'] = Aperture_MovAVG_1[:min_len]
-        if 'RING_FINGER' in metrics: INFO['RING_FINGER'] = Aperture_MovAVG_2[:min_len]
-        if 'PINKY' in metrics: INFO['PINKY'] = Aperture_MovAVG_3[:min_len]
-        if 'SWITCH' in metrics: INFO['SWITCH'] = SWITCH[:min_len]
+        if 'Center_Diff' in metrics:
+            INFO['Center_Diff'] = Center_Diff[:min_len]
+        if 'Center_MovAVG_x' in metrics:
+            INFO['Center_MovAVG_x'] = Center_MovAVG_x[:min_len]
+        if 'Center_MovAVG_y' in metrics:
+            INFO['Center_MovAVG_y'] = Center_MovAVG_y[:min_len]
+        if 'Center_MovAVG_z' in metrics:
+            INFO['Center_MovAVG_z'] = Center_MovAVG_z[:min_len]
+        if 'INDEX_FINGER' in metrics:
+            INFO['INDEX_FINGER'] = Aperture_MovAVG_0[:min_len]
+        if 'MIDDLE_FINGER' in metrics:
+            INFO['MIDDLE_FINGER'] = Aperture_MovAVG_1[:min_len]
+        if 'RING_FINGER' in metrics:
+            INFO['RING_FINGER'] = Aperture_MovAVG_2[:min_len]
+        if 'PINKY' in metrics:
+            INFO['PINKY'] = Aperture_MovAVG_3[:min_len]
+        if 'SWITCH' in metrics:
+            INFO['SWITCH'] = SWITCH[:min_len]
+
+        # TODO: PATH MOVEMENT BY LSE ERROR
+        # LSE_x, LSE_y = self.getArchError(Center_MovAVG_x, Center_MovAVG_y, min_len)
+        # if 'LSE_x' in metrics: INFO['LSE_x'] = LSE_x[:min_len]
+        # if 'LSE_y' in metrics: INFO['LSE_y'] = LSE_y[:min_len]
 
         return pd.DataFrame(INFO)
+
+    def getArchError(self, x, y, min_len):
+
+        x = pd.Series(x).replace(np.inf, np.nan).replace(-np.inf,
+                                                         np.nan).dropna().to_numpy()
+        y = pd.Series(y).replace(np.inf, np.nan).replace(-np.inf,
+                                                         np.nan).dropna().to_numpy()
+
+        lines_x = np.zeros(x.shape[0])
+        lines_y = np.zeros(x.shape[0])
+
+        if x.shape[0]:
+            A = np.vstack([np.array(list(range(len(x)))), np.ones(len(x))]).T
+            (m_x, c_x), residuals, RANK, sing = np.linalg.lstsq(A, x, rcond=None)
+            # lines_x[np.array(self.START[-x.shape[0]:]) == 1] = m_x*np.array(list(range( lines_x[np.array(self.START[-x.shape[0]:]) == 1].shape[0] ))) + c_x
+            lines_x[np.array(self.START[-x.shape[0]:]) == 1] = (
+                np.mean(residuals) / np.array(self.START[-x.shape[0]:]).sum() * 10)
+
+        if y.shape[0]:
+            A = np.vstack([np.array(list(range(len(y)))), np.ones(len(y))]).T
+            (m_y, c_y), residuals, RANK, sing = np.linalg.lstsq(A, y, rcond=None)
+            # lines_y[np.array(self.START[-x.shape[0]:]) == 1] = m_y*np.array(list(range( lines_y[np.array(self.START[-x.shape[0]:]) == 1].shape[0] ))) + c_y
+            lines_y[np.array(self.START[-x.shape[0]:]) == 1] = (
+                np.mean(residuals) / np.array(self.START[-x.shape[0]:]).sum() * 10)
+
+        if x.shape[0] < min_len:
+            lines_x = np.append(lines_x, np.zeros(min_len-x.shape[0]))
+            lines_y = np.append(lines_y, np.zeros(min_len-x.shape[0]))
+
+        return lines_x, lines_y
+
+
+class HandCorrelation():
+
+    def __init__(self) -> None:
+        # TODO: ADD HANDEDNESS
+        # TODO: ADD TWO-HANDED CORRELATION (SYMMETRY / ASSYMETRY / CONTACT)
+
+        # self.CENTER
+
+        pass
+
+    def findTemporalAlignment(self, left: SignLanguagePhonology, right: SignLanguagePhonology):
+        pass

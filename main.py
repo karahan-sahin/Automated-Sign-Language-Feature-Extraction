@@ -32,38 +32,41 @@ videos = [0] + ['data/'+file_name for file_name in os.listdir('data')]
 option = st.sidebar.selectbox('Select vids', videos)
 
 camera = cv2.VideoCapture(option)
+
+display = st.sidebar.selectbox(
+    'Select metric', ('feature', 'boundary'), index=1)
+
+if display == 'feature':
+    selected = st.sidebar.multiselect(
+        'Select metric', ('LOCATION', 'ORIENTATION', 'FINGER_SELECTION', 'MOVEMENT'), default=['MOVEMENT'])
+
+if display == 'boundary':
+
+    selected = []
+    window_size = st.sidebar.number_input(
+        'Select MovAvg window', value=5)
+    view_window = st.sidebar.number_input(
+        'Select Motion Track window', value=100)
+
+    hand = st.sidebar.selectbox(
+        'Select hand for movement tracking', ('LEFT', 'RIGHT'))
+
+    metrics = st.sidebar.multiselect(label='Select Metrics',
+                                        options=[ 'Center_Diff', 'Center_MovAVG_x', 'Center_MovAVG_y', 'Center_MovAVG_z', 'INDEX_FINGER', 'MIDDLE_FINGER', 'RING_FINGER', 'PINKY', 'SWITCH', 'LSE_x', 'LSE_y'], 
+                                        default=[ 'Center_Diff', 'Center_MovAVG_x', 'Center_MovAVG_y', 'Center_MovAVG_z', 'INDEX_FINGER', 'MIDDLE_FINGER', 'RING_FINGER', 'PINKY', 'SWITCH', 'LSE_x', 'LSE_y'])
+
 run = st.sidebar.button('Run')
 
 while run:
 
     _, frame = camera.read()
 
-    phonology_left = SignLanguagePhonology()
-    phonology_right = SignLanguagePhonology()
+    phonology_left = SignLanguagePhonology(hand='left')
+    phonology_right = SignLanguagePhonology(hand='right')
+    
+    hand_relation = HandCorrelation()
 
     with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
-
-        display = st.sidebar.selectbox(
-            'Select metric', ('feature', 'boundary'), index=1)
-
-        if display == 'feature':
-            selected = st.sidebar.multiselect(
-                'Select metric', ('LOCATION', 'ORIENTATION', 'FINGER_SELECTION', 'MOVEMENT'), default=['MOVEMENT'])
-
-        if display == 'boundary':
-
-            selected = []
-            window_size = st.sidebar.number_input(
-                'Select MovAvg window', value=5)
-            view_window = st.sidebar.number_input(
-                'Select Motion Track window', value=100)
-
-            hand = st.sidebar.selectbox(
-                'Select hand for movement tracking', ('LEFT', 'RIGHT'))
-
-            metrics = st.sidebar.multiselect(label='Select Metrics',
-                                             options=[ 'Center_Diff', 'Center_MovAVG_x', 'Center_MovAVG_y', 'Center_MovAVG_z', 'INDEX_FINGER', 'MIDDLE_FINGER', 'RING_FINGER', 'PINKY', 'SWITCH'], 
-                                             default=[ 'Center_Diff', 'Center_MovAVG_x', 'Center_MovAVG_y', 'Center_MovAVG_z', 'INDEX_FINGER', 'MIDDLE_FINGER', 'RING_FINGER', 'PINKY', 'SWITCH'])
 
             # value = st.number_input('Select window',value=-3)
             # tolerance = st.number_input('Select window',value=50)
@@ -102,9 +105,8 @@ while run:
                     results.right_hand_landmarks, results.pose_landmarks, selected)
                 logs_left = phonology_left.getJointInfo(
                     results.left_hand_landmarks, results.pose_landmarks, selected)
-
-                # TODO: JOINT APERTURE DIFFERENCE
-
+                
+                
                 if display == 'boundary':
                     # FIXME: MULTI-HAND PLOT
                     if hand == 'LEFT':
@@ -116,6 +118,10 @@ while run:
 
                 else:
                     if logs_right or logs_left:
+                        
+                        #if phonology_left.SWITCH or phonology_right.SWITCH:
+                        #    pass
+                        
                         cols = st.columns(len(selected))
                         for idx, (col_name, col) in enumerate(zip(selected, cols)):
                             col.markdown(f'### {col_name}')
@@ -131,7 +137,7 @@ while run:
                         st.write('Hand Not Found')
 
                 if option:
-                    time.sleep(0.2)
+                    time.sleep(0.02)
 
 
 else:

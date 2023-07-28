@@ -49,11 +49,19 @@ if display == 'boundary':
         'Select Motion Track window', value=100)
 
     hand = st.sidebar.selectbox(
-        'Select hand for movement tracking', ('LEFT', 'RIGHT'))
+        'Select hand for movement tracking', ( 'BOTH', 'LEFT', 'RIGHT' ))
 
-    metrics = st.sidebar.multiselect(label='Select Metrics',
-                                        options=[ 'Center_Diff', 'Center_MovAVG_x', 'Center_MovAVG_y', 'Center_MovAVG_z', 'INDEX_FINGER', 'MIDDLE_FINGER', 'RING_FINGER', 'PINKY', 'SWITCH', 'LSE_x', 'LSE_y'], 
-                                        default=[ 'Center_Diff', 'Center_MovAVG_x', 'Center_MovAVG_y', 'Center_MovAVG_z', 'INDEX_FINGER', 'MIDDLE_FINGER', 'RING_FINGER', 'PINKY', 'SWITCH', 'LSE_x', 'LSE_y'])
+    if not hand == 'BOTH':
+        metrics = st.sidebar.multiselect(label='Select Metrics',
+                                        options=['Center_Diff', 'Center_MovAVG_x', 'Center_MovAVG_y', 'Center_MovAVG_z',
+                                                'INDEX_FINGER', 'MIDDLE_FINGER', 'RING_FINGER', 'PINKY', 'SWITCH', 'LSE_x', 'LSE_y'],
+                                        default=['Center_Diff', 'Center_MovAVG_x', 'Center_MovAVG_y', 'Center_MovAVG_z', 'INDEX_FINGER', 'MIDDLE_FINGER', 'RING_FINGER', 'PINKY', 'SWITCH', 'LSE_x', 'LSE_y'])
+
+    else:
+        metrics = st.sidebar.multiselect(label='Select Metrics',
+                                        options=['Center_MovAVG_Left', 'Center_MovAVG_Right', 'Aperture_MovAVG_Left', 'Aperture_MovAVG_Right', 'SWITCH_Left', 'SWITCH_Right'],
+                                        default=['Center_MovAVG_Left', 'Center_MovAVG_Right', 'Aperture_MovAVG_Left', 'Aperture_MovAVG_Right', 'SWITCH_Left', 'SWITCH_Right'])
+
 
 run = st.sidebar.button('Run')
 
@@ -63,13 +71,13 @@ while run:
 
     phonology_left = SignLanguagePhonology(hand='left')
     phonology_right = SignLanguagePhonology(hand='right')
-    
-    hand_relation = HandCorrelation()
+
+    hand_relation = TwoHandedPhonology()
 
     with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
 
-            # value = st.number_input('Select window',value=-3)
-            # tolerance = st.number_input('Select window',value=50)
+        # value = st.number_input('Select window',value=-3)
+        # tolerance = st.number_input('Select window',value=50)
 
         with st.empty():
 
@@ -105,8 +113,7 @@ while run:
                     results.right_hand_landmarks, results.pose_landmarks, selected)
                 logs_left = phonology_left.getJointInfo(
                     results.left_hand_landmarks, results.pose_landmarks, selected)
-                
-                
+
                 if display == 'boundary':
                     # FIXME: MULTI-HAND PLOT
                     if hand == 'LEFT':
@@ -116,12 +123,16 @@ while run:
                         st.line_chart(phonology_right.getMovementInformation(
                             view_window, window_size, metrics))
 
+                    if hand == 'BOTH':
+                        st.line_chart(hand_relation.findTemporalAlignment(
+                            phonology_left, phonology_right, view_window, window_size, metrics))
+
                 else:
                     if logs_right or logs_left:
-                        
-                        #if phonology_left.SWITCH or phonology_right.SWITCH:
+
+                        # if phonology_left.SWITCH or phonology_right.SWITCH:
                         #    pass
-                        
+
                         cols = st.columns(len(selected))
                         for idx, (col_name, col) in enumerate(zip(selected, cols)):
                             col.markdown(f'### {col_name}')

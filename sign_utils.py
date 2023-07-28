@@ -69,6 +69,7 @@ class SignLanguagePhonology():
         self.DIFF = []
 
         self.CURR_START = 0
+        self.CURR_STOP = 0
         self.PATH_ANGLE = []
         self.SWITCH = 0
         self.START = []
@@ -129,7 +130,17 @@ class SignLanguagePhonology():
 
             return logs
 
-        return None
+        else:
+            center = np.array([0, 0, 0])
+            self.DIFF.append(getDistance(self.CENTER[-1], center))
+            self.CENTER.append(center)
+
+            self.APERTURE.append(np.array([0, 0, 0, 0]))
+
+            self.SWITCH = 0
+            self.START.append(self.SWITCH)
+
+            return None
 
     def getFingerConfiguration(self, marks):
 
@@ -245,6 +256,7 @@ class SignLanguagePhonology():
         if np.mean(self.DIFF[-3:]) > 0.007:
             self.SWITCH = 1
             self.CURR_START += 1
+            self.CURR_STOP = 0
 
             # Direction
             logs.append(
@@ -255,17 +267,18 @@ class SignLanguagePhonology():
                 self.APERTURE[-1] - self.APERTURE[-2]) > 0 else 'closing'})
 
             SELECTED = self.CENTER[-self.CURR_START:]
-            
-            if len(SELECTED) > 3:    
+
+            if len(SELECTED) > 3:
                 self.PATH_ANGLE.append(getJointAngleNP(
                     np.array(SELECTED[0])[:2], np.array(SELECTED[round(len(SELECTED) / 2)])[:2], np.array(SELECTED[-1])[:2]))
 
                 MPA = np.mean(self.PATH_ANGLE)
                 logs.append(
-                    { 'PATH_ANGLE': ('curve' if MPA < 90 else 'straight', MPA) })
+                    {'PATH_ANGLE': ('curve' if MPA < 90 else 'straight', MPA)})
 
         else:
             self.CURR_START = 0
+            self.CURR_STOP += 1
             self.SWITCH = 0
             self.PATH_ANGLE = []
 
@@ -275,59 +288,46 @@ class SignLanguagePhonology():
 
     def getMovementInformation(self, view_window, window_size, metrics):
 
-        Center_Diff = self.DIFF[-view_window:]
-
-        Center_MovAVG_x = pd.Series(np.array(
-            self.CENTER[-view_window:])[:, 0]).rolling(window_size).mean().tolist()
-        Center_MovAVG_y = pd.Series(np.array(
-            self.CENTER[-view_window:])[:, 1]).rolling(window_size).mean().tolist()
-        Center_MovAVG_z = pd.Series(np.array(
-            self.CENTER[-view_window:])[:, 2]).rolling(window_size).mean().tolist()
-
-        Aperture_MovAVG_0 = pd.Series(np.array(
-            self.APERTURE[-view_window:])[:, 0] / 180).rolling(window_size).mean().tolist()
-        Aperture_MovAVG_1 = pd.Series(np.array(
-            self.APERTURE[-view_window:])[:, 1] / 180).rolling(window_size).mean().tolist()
-        Aperture_MovAVG_2 = pd.Series(np.array(
-            self.APERTURE[-view_window:])[:, 2] / 180).rolling(window_size).mean().tolist()
-        Aperture_MovAVG_3 = pd.Series(np.array(
-            self.APERTURE[-view_window:])[:, 3] / 180).rolling(window_size).mean().tolist()
-
-        SWITCH = self.START[-view_window:]
-
-        min_len = min(
-            len(Center_Diff),
-            len(Center_MovAVG_x),
-            len(Aperture_MovAVG_0),
-            len(SWITCH))
-
         INFO = {}
 
         if 'Center_Diff' in metrics:
-            INFO['Center_Diff'] = Center_Diff[:min_len]
+            INFO['Center_Diff'] = self.DIFF[-view_window:]
+
         if 'Center_MovAVG_x' in metrics:
-            INFO['Center_MovAVG_x'] = Center_MovAVG_x[:min_len]
+            INFO['Center_MovAVG_x'] = pd.Series(np.array(
+                self.CENTER[-view_window:])[:, 0]).rolling(window_size).mean().tolist()
         if 'Center_MovAVG_y' in metrics:
-            INFO['Center_MovAVG_y'] = Center_MovAVG_y[:min_len]
+            INFO['Center_MovAVG_y'] = pd.Series(np.array(
+                self.CENTER[-view_window:])[:, 1]).rolling(window_size).mean().tolist()
         if 'Center_MovAVG_z' in metrics:
-            INFO['Center_MovAVG_z'] = Center_MovAVG_z[:min_len]
-        if 'INDEX_FINGER' in metrics:
-            INFO['INDEX_FINGER'] = Aperture_MovAVG_0[:min_len]
-        if 'MIDDLE_FINGER' in metrics:
-            INFO['MIDDLE_FINGER'] = Aperture_MovAVG_1[:min_len]
-        if 'RING_FINGER' in metrics:
-            INFO['RING_FINGER'] = Aperture_MovAVG_2[:min_len]
-        if 'PINKY' in metrics:
-            INFO['PINKY'] = Aperture_MovAVG_3[:min_len]
+            INFO['Center_MovAVG_z'] = pd.Series(np.array(
+                self.CENTER[-view_window:])[:, 2]).rolling(window_size).mean().tolist()
+        if 'Aperture_MovAVG_0' in metrics:
+            INFO['Aperture_MovAVG_0'] = pd.Series(np.array(
+                self.APERTURE[-view_window:])[:, 0] / 180).rolling(window_size).mean().tolist()
+        if 'Aperture_MovAVG_1' in metrics:
+            INFO['Aperture_MovAVG_1'] = pd.Series(np.array(
+                self.APERTURE[-view_window:])[:, 1] / 180).rolling(window_size).mean().tolist()
+        if 'Aperture_MovAVG_2' in metrics:
+            INFO['Aperture_MovAVG_2'] = pd.Series(np.array(
+                self.APERTURE[-view_window:])[:, 2] / 180).rolling(window_size).mean().tolist()
+        if 'Aperture_MovAVG_3' in metrics:
+            INFO['Aperture_MovAVG_3'] = pd.Series(np.array(
+                self.APERTURE[-view_window:])[:, 3] / 180).rolling(window_size).mean().tolist()
+
         if 'SWITCH' in metrics:
-            INFO['SWITCH'] = SWITCH[:min_len]
+            INFO['SWITCH'] = self.START[-view_window:]
 
-        # TODO: PATH MOVEMENT BY LSE ERROR
-        # LSE_x, LSE_y = self.getArchError(Center_MovAVG_x, Center_MovAVG_y, min_len)
-        # if 'LSE_x' in metrics: INFO['LSE_x'] = LSE_x[:min_len]
-        # if 'LSE_y' in metrics: INFO['LSE_y'] = LSE_y[:min_len]
 
-        return pd.DataFrame(INFO)
+        min_len = min([len(i) for i in INFO.values()])
+
+        if 'LSE_x' in metrics: 
+            LSE_x, LSE_y = self.getArchError(INFO['Center_MovAVG_x'], INFO['Center_MovAVG_y'], min_len)
+            INFO['LSE_x'] = LSE_x
+            INFO['LSE_y'] = LSE_y
+
+        # return pd.DataFrame(INFO)
+        return pd.DataFrame({label: arr[:min_len] for label, arr in INFO.items()})
 
     def getArchError(self, x, y, min_len):
 
@@ -344,14 +344,14 @@ class SignLanguagePhonology():
             (m_x, c_x), residuals, RANK, sing = np.linalg.lstsq(A, x, rcond=None)
             # lines_x[np.array(self.START[-x.shape[0]:]) == 1] = m_x*np.array(list(range( lines_x[np.array(self.START[-x.shape[0]:]) == 1].shape[0] ))) + c_x
             lines_x[np.array(self.START[-x.shape[0]:]) == 1] = (
-                np.mean(residuals) / np.array(self.START[-x.shape[0]:]).sum() * 10)
+                (np.mean(residuals) / np.array(self.START[-x.shape[0]:]).sum()) * 10)
 
         if y.shape[0]:
             A = np.vstack([np.array(list(range(len(y)))), np.ones(len(y))]).T
             (m_y, c_y), residuals, RANK, sing = np.linalg.lstsq(A, y, rcond=None)
             # lines_y[np.array(self.START[-x.shape[0]:]) == 1] = m_y*np.array(list(range( lines_y[np.array(self.START[-x.shape[0]:]) == 1].shape[0] ))) + c_y
             lines_y[np.array(self.START[-x.shape[0]:]) == 1] = (
-                np.mean(residuals) / np.array(self.START[-x.shape[0]:]).sum() * 10)
+                (np.mean(residuals) / np.array(self.START[-x.shape[0]:]).sum()) * 10)
 
         if x.shape[0] < min_len:
             lines_x = np.append(lines_x, np.zeros(min_len-x.shape[0]))
@@ -359,8 +359,7 @@ class SignLanguagePhonology():
 
         return lines_x, lines_y
 
-
-class HandCorrelation():
+class TwoHandedPhonology():
 
     def __init__(self) -> None:
         # TODO: ADD HANDEDNESS
@@ -370,5 +369,32 @@ class HandCorrelation():
 
         pass
 
-    def findTemporalAlignment(self, left: SignLanguagePhonology, right: SignLanguagePhonology):
-        pass
+    def findTemporalAlignment(self,
+                              left: SignLanguagePhonology,
+                              right: SignLanguagePhonology,
+                              view_window: int,
+                              window_size: int,
+                              metrics: list):
+
+        INFO = {}
+
+        if 'Center_MovAVG_Left' in metrics:
+            INFO['Center_MovAVG_Left'] = pd.Series(np.mean(
+                left.CENTER[-view_window:], axis=1) / 180).rolling(window_size).mean().tolist()
+        if 'Center_MovAVG_Right' in metrics:
+            INFO['Center_MovAVG_Right'] = pd.Series(np.mean(
+                right.CENTER[-view_window:], axis=1) / 180).rolling(window_size).mean().tolist()
+        if 'Aperture_MovAVG_Left' in metrics:
+            INFO['Aperture_MovAVG_Left'] = pd.Series(np.mean(
+                left.APERTURE[-view_window:], axis=1) / 180).rolling(window_size).mean().tolist()
+        if 'Aperture_MovAVG_Right' in metrics:
+            INFO['Aperture_MovAVG_Right'] = pd.Series(np.mean(
+                right.APERTURE[-view_window:], axis=1) / 180).rolling(window_size).mean().tolist()
+        if 'SWITCH_Left' in metrics:
+            INFO['SWITCH_Left'] = left.START[-view_window:]
+        if 'SWITCH_Right' in metrics:
+            INFO['SWITCH_Right'] = right.START[-view_window:]
+
+        min_len = min([len(i) for i in INFO.values()])
+
+        return pd.DataFrame({label: arr[:min_len] for label, arr in INFO.items()})

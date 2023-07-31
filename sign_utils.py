@@ -1,7 +1,19 @@
+import os
+import pickle
 import pandas as pd
 import numpy as np
 from scipy.spatial import distance
+from fastdtw import fastdtw
+
 from scipy.linalg import lstsq
+
+from tqdm import tqdm
+import math
+import pickle
+import os
+from collections import defaultdict
+
+KEY_SET = set(['CHEST_PROXIMITY_RIGHT','MOUTH_PROXIMITY_RIGHT','NOSE_PROXIMITY_RIGHT','EAR_PROXIMITY_RIGHT','EYE_PROXIMITY_RIGHT','PALM/BACK_PROXIMITY_RIGHT','TIPS/WRIST_PROXIMITY_RIGHT','URNAL/RADIAL_PROXIMITY_RIGHT','THUMB_ANGLE_RIGHT','THUMB_SELECTION_RIGHT','THUMB_CURVED_RIGHT','INDEX_FINGER_ANGLE_RIGHT','INDEX_FINGER_SELECTION_RIGHT','INDEX_FINGER_CURVED_RIGHT','MIDDLE_FINGER_ANGLE_RIGHT','MIDDLE_FINGER_SELECTION_RIGHT','MIDDLE_FINGER_CURVED_RIGHT','RING_FINGER_ANGLE_RIGHT','RING_FINGER_SELECTION_RIGHT','RING_FINGER_CURVED_RIGHT','PINKY_ANGLE_RIGHT','PINKY_SELECTION_RIGHT','PINKY_CURVED_RIGHT','PATH_MOVEMENT_RIGHT','APERTURE_MOVEMENT_RIGHT','PATH_ANGLE_MOVEMENT_RIGHT','CHEST_PROXIMITY_LEFT','MOUTH_PROXIMITY_LEFT','NOSE_PROXIMITY_LEFT','EAR_PROXIMITY_LEFT','EYE_PROXIMITY_LEFT','PALM/BACK_PROXIMITY_LEFT','TIPS/WRIST_PROXIMITY_LEFT','URNAL/RADIAL_PROXIMITY_LEFT','THUMB_ANGLE_LEFT','THUMB_SELECTION_LEFT','THUMB_CURVED_LEFT','INDEX_FINGER_ANGLE_LEFT','INDEX_FINGER_SELECTION_LEFT','INDEX_FINGER_CURVED_LEFT','MIDDLE_FINGER_ANGLE_LEFT','MIDDLE_FINGER_SELECTION_LEFT','MIDDLE_FINGER_CURVED_LEFT','RING_FINGER_ANGLE_LEFT','RING_FINGER_SELECTION_LEFT','RING_FINGER_CURVED_LEFT','PINKY_ANGLE_LEFT','PINKY_SELECTION_LEFT','PINKY_CURVED_LEFT','PATH_MOVEMENT_LEFT','APERTURE_MOVEMENT_LEFT','PATH_ANGLE_MOVEMENT_LEFT'])
 
 HAND_JOINTS = ['0 WRIST',
                '1 THUMB_CMC', '2 THUMB_MCP', '3 THUMB_IP', '4 THUMB_TIP',
@@ -64,9 +76,12 @@ class SignLanguagePhonology():
 
         self.HAND = hand
 
+        self.INFO_MEMORY = []
         self.CENTER = [np.array([0, 0, 0])]
         self.APERTURE = [np.array([0, 0, 0, 0])]
         self.DIFF = []
+        
+        self.HAND_MEMORY = []
 
         self.CURR_START = 0
         self.CURR_STOP = 0
@@ -108,6 +123,7 @@ class SignLanguagePhonology():
                     point.z
                 ])
 
+
             # FIXME: Center by selected finger
             center = np.mean(center, axis=0)
 
@@ -122,11 +138,14 @@ class SignLanguagePhonology():
                 'ORIENTATION': self.getOrientation(marks),
                 'FINGER_SELECTION': self.getFingerConfiguration(marks),
             }
+
             INFO['MOVEMENT'] = self.getMovementFeatures(
                 INFO.get('FINGER_SELECTION'))
 
             for select_ in selected:
                 logs.append(INFO[select_])
+
+            self.INFO_MEMORY.append(INFO)
 
             return logs
 
@@ -318,11 +337,11 @@ class SignLanguagePhonology():
         if 'SWITCH' in metrics:
             INFO['SWITCH'] = self.START[-view_window:]
 
-
         min_len = min([len(i) for i in INFO.values()])
 
-        if 'LSE_x' in metrics: 
-            LSE_x, LSE_y = self.getArchError(INFO['Center_MovAVG_x'], INFO['Center_MovAVG_y'], min_len)
+        if 'LSE_x' in metrics:
+            LSE_x, LSE_y = self.getArchError(
+                INFO['Center_MovAVG_x'], INFO['Center_MovAVG_y'], min_len)
             INFO['LSE_x'] = LSE_x
             INFO['LSE_y'] = LSE_y
 
@@ -398,3 +417,127 @@ class TwoHandedPhonology():
         min_len = min([len(i) for i in INFO.values()])
 
         return pd.DataFrame({label: arr[:min_len] for label, arr in INFO.items()})
+
+class LexicalClassification():
+    
+    def __init__(self):
+        
+        # TODO: EXPERIMENTS
+        # - POSE + DTW
+        # - PRIOR_FEATS + DTW
+        # - PROPOSED_FEATS + DTW
+        
+        # EXPERIMENTS: DTW TYPES
+        # - WEIGHTED DTW
+                
+        self.LEXICON = []
+        self.VECTORS = []
+        
+        self.PREDICTED = []
+        
+        self.importLexicon(INFO_TYPE='feat', METRICS=None)
+        
+    def importLexicon(self, INFO_TYPE: str, METRICS: list[str]):
+        
+        file = os.listdir('data/vectors/feats/')[-1]
+                
+        ITEMS = pickle.loads(open('data/vectors/feats/'+file, 'rb').read())
+        
+        for label, INFO in tqdm(ITEMS.items()):
+            
+            self.LEXICON.append(label)
+            self.VECTORS.append(self.processVectors(INFO))
+
+    def processVectors(self, INFO):
+       
+       # SET INFORMATION:
+       # - LOCATION: Signal to MAJOR LOCATIONS ( MAJOR LOCATION CONSTRAINT)
+       # - ORIENTATION: Signal to 6 ORIENTATION (DIFF RELATIVE SCORE TO 3 PAIRS)
+       # - FINGER_SELECTION: Signal to 5 FINGER APERTURES (TODO: SHOULD ADD SELECTION/CURVE FEATS) ( SELECTED FINGER CONSTRAINT)
+       # - MOVEMENT: Signal to 2 MOVEMENT FEATS ( PATH: (0,1), APERATURE: (0,1) )
+       
+       
+       VECTORS = self.generateVector(INFO['right_log'], 'right')
+       VECTORS.update(self.generateVector(INFO['left_log'], 'left'))
+       
+       return VECTORS
+       
+    def generateVector(self, points, hand):
+        
+        FEAT_DICT = defaultdict(list)
+        
+        for point in points:
+        
+            for location, (_, proximity) in point['LOCATION'].items():
+                
+                FEAT_DICT[f"{location}_PROXIMITY_{hand.upper()}"].append(proximity)
+
+            # FIXME: UNNECESSARY DICT
+            for orient,rotation in zip(['PALM/BACK', 'TIPS/WRIST', 'URNAL/RADIAL' ],point['ORIENTATION']['ORIENTATION']):
+                
+                FEAT_DICT[f"{orient}_PROXIMITY_{hand.upper()}"].append(list(rotation)[-1])   
+            
+            for hand_dict in point['FINGER_SELECTION']:
+                
+                ff = 'FINGER' if 'FINGER' in hand_dict.keys() else 'finger'                 
+                
+                FEAT_DICT[f"{hand_dict[ff]}_ANGLE_{hand.upper()}"].append(hand_dict['ANGLE_1' if hand_dict[ff] != 'THUMB' else 'ANGLE_0'])
+            
+                FEAT_DICT[f"{hand_dict[ff]}_SELECTION_{hand.upper()}"].append(1 if hand_dict['is_selected'] else 0)
+                
+                FEAT_DICT[f"{hand_dict[ff]}_CURVED_{hand.upper()}"].append(1 if hand_dict['is_curved'] else 0)
+
+            for feats in point['MOVEMENT']:
+                            
+                feat_name, val = list(feats.items())[0]
+                
+                FEAT_DICT[f"{feat_name}_MOVEMENT_{hand.upper()}"].append(val[-1])
+                
+        
+        FEAT_DICT = {
+            FEATURE: pd.Series(VALS)  for FEATURE, VALS in FEAT_DICT.items()
+        }
+        
+        return FEAT_DICT
+    
+    def predict(self, INFO):
+        
+        SIMILARITY = {}
+
+        BASE = self.processVectors(INFO)
+
+        zip_lex = list(zip(self.LEXICON,self.VECTORS))
+
+        for word, candidate in tqdm(zip_lex):
+
+            KEYS = list(KEY_SET.intersection(set(list(candidate.keys())).intersection(BASE.keys())))
+            # v0
+            sim = 0
+            kk = 0
+            for dim in KEYS:
+                #sim += dtw(BASE[dim], candidate[dim])
+                try:
+                    v1, v2 = np.array([BASE[dim].to_list()]), np.array([candidate[dim].to_list()])
+                    min_len = min([v1.shape[1],v2.shape[1]])
+                    
+                    #pad = math.floor(abs(v1.shape[1]-v2.shape[1]) / 2)
+
+                    sim += fastdtw(v1[:,:min_len], v2[:,:min_len])[0]
+                    kk += 1
+                except:
+                    pass
+
+
+            if kk: SIMILARITY[word] = sim / kk
+        
+        vla = sorted(SIMILARITY.items(), key=lambda x:x[1], reverse=False)
+        if vla:
+            self.PREDICTED.append(vla[0])
+                
+        
+                
+        
+    
+        
+        
+        

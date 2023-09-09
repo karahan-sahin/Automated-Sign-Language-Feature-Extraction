@@ -1,5 +1,9 @@
 # Automated-Sign-Language-Feature-Extraction
 
+
+
+# TODO: Add live demo gif
+
 This is the repository for pre-liminary experiments carried for the Automatic Sign Language Feature Extraction Tool (ASL-FET). The tool includes implementation of therotical morpho-phonological rules for
 
 - Sign Boundary Detection

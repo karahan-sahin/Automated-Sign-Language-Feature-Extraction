@@ -1,0 +1,8 @@
+mediapipe
+streamlit
+sklearn
+keras
+pandas 
+numpy
+tensorflow
+torch

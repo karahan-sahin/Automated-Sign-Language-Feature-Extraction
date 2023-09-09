@@ -79,7 +79,7 @@ Before you starting your
 
 Or the linguistic-feature extraction library:
 
-```
+```python
 import os
 import sys
 from lib.phonology.temporal import TemporalPhonology

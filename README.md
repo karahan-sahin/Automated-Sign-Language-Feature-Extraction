@@ -70,11 +70,23 @@ After setting up the environment, you can run the user-interface with the comman
 
 ## Usage
 
+### 1. Feature Extraction
+
 The module can be either used via user-interface:
 ```bash
 streamlit run main.py
 ```
-Before you starting your
+Before you start running, you need add your files to the `data/samples` directory:
+```
+├── data
+│   ├── output
+│   │   ├── feature-v2.csv
+│   │   └── live-features.csv
+│   ├── samples
+│   │   ├── v1.mp4
+│   │   ├── v2.mp4
+│   │   └── v4.mp4
+```
 
 
 Or the linguistic-feature extraction library:
@@ -93,13 +105,22 @@ RIGHT = HandshapePhonology('Right')
 TEMPORAL = TemporalPhonology(PARAMS['selected'])
 ```
 
+### 2. Sign Boundary Segmentation
+
+- Work in Progress
+
+### 3. Sign Classification
+
+- Work in Progress
 
 
 ## Requirements
 This tool requires the following Python libraries:
 - OpenCV
+- MediaPipe
 - NumPy
 - SciPy
+- Streamlit
 
 ## License
 

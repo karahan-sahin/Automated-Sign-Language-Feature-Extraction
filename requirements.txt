@@ -1,0 +1,6 @@
+mediapipe
+streamlit
+sklearn
+pandas
+numpy
+numba

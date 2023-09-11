@@ -6,7 +6,9 @@ The features extracted by this tool can be used to enhance sign language recogni
 
 ## Demo
 
-https://github.com/karahan-sahin/Automated-Sign-Language-Feature-Extraction/assets/53216998/b27b8515-1a98-4122-a4ce-8bc17c520bc1
+
+https://github.com/karahan-sahin/Automated-Sign-Language-Feature-Extraction/assets/53216998/ba77522b-6b60-4f7b-a699-9f4591623484
+
 
 ------
 
@@ -133,12 +135,13 @@ with mp_holistic.Holistic(min_detection_confidence=0.1, min_tracking_confidence=
 
 ### 3. Sign Classification
 
+
+https://github.com/karahan-sahin/Automated-Sign-Language-Feature-Extraction/assets/53216998/314a664f-0100-4883-a48a-ffc630e2764a
+
+
 #### **Version 0:**
 - Baseline dense retrieval is implemented
 - Vector representations are extracted by 1D representation phonological feature sequence
-
-
-https://github.com/karahan-sahin/Automated-Sign-Language-Feature-Extraction/assets/53216998/efbe140d-7935-4b9a-b028-68a3b0457a1e
 
 
 ## Requirements
@@ -151,5 +154,5 @@ This tool requires the following Python libraries:
 
 ## License
 
-This tool is released under the MIT License.
+This tool is released under Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0) license
 

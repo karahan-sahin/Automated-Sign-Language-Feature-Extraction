@@ -65,7 +65,14 @@ def navbar():
         selected = st.sidebar.multiselect(
             'Select metric', ('LOCATION', 'ORIENTATION', 'FINGER_SELECTION', 'Path', 'Spacial', 'Temporal', 'Setting'), default=['LOCATION', 'ORIENTATION', 'FINGER_SELECTION', 'Path', 'Spacial', 'Temporal', 'Setting'])
 
+        
         PARAMS['selected'] = selected
+        PARAMS['topK'] = st.sidebar.number_input(
+            'Select Top Predictions', value=5)
+        
+        PARAMS['model_name'] = st.sidebar.selectbox(
+                'Select Model', ('baseline', 'LSTM Auto-encoder', 'Transformer Auto-encoder'))
+        PARAMS['timesteps'] = st.sidebar.slider( 'Select a range of timesteps', 1, 60, (1, 60))
 
 
     run = st.sidebar.button('Run', key=1)

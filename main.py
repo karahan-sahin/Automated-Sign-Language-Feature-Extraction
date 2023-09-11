@@ -1,11 +1,15 @@
-import sys
 import os
+import sys
 import cv2
+import asyncio
 import streamlit as st
 import mediapipe as mp
+import pandas as pd
 from lib.phonology.handshape import *
 from lib.phonology.temporal import *
+from lib.phonology.classifier import *
 from components.navbar import navbar
+
 
 if 'log' not in st.session_state:
     st.session_state.log = None
@@ -24,6 +28,7 @@ PARAMS = navbar()
 LEFT = HandshapePhonology('Left')
 RIGHT = HandshapePhonology('Right')
 TEMPORAL = TemporalPhonology(PARAMS['selected'])
+if PARAMS['display'] == 'classification':CLASSIFIER = LexicalClassification(PARAMS)
 
 export = False
 stop = st.sidebar.button('Save Live Stream', key=2)
@@ -57,12 +62,20 @@ while PARAMS['run'] and not stop:
                                         
                     if PARAMS['display'] == 'feature':
                         if INFO: st.dataframe(pd.DataFrame.from_records(TEMPORAL.HISTORY[-20:]), height=750)
+                    
                     if PARAMS['display'] == 'boundary':
                         st.line_chart(RIGHT.CENTER_HISTORY)
                         
+                    if PARAMS['display'] == 'classification':
+                        if CLASSIFIER.LEXICON_MEMORY: st.dataframe(pd.DataFrame.from_records(CLASSIFIER.LEXICON_MEMORY[-20:]), height=750, use_container_width=True)
+                        asyncio.run(CLASSIFIER.predict(CLASSIFIER.transform(TEMPORAL.HISTORY), topK=PARAMS['topK']))
+
                     if idx % 10 == 0:
-                        st.session_state.log = TEMPORAL.HISTORY
-                        
+                        if PARAMS['display'] == 'feature':
+                            st.session_state.log = TEMPORAL.HISTORY
+                        if PARAMS['display'] == 'classification':
+                            st.session_state.log = CLASSIFIER.LEXICON_MEMORY
+                            
                     idx+=1
                     
     except cv2.error:
@@ -82,4 +95,3 @@ if st.session_state.log:
         else:
             pd.DataFrame.from_records(st.session_state.log).to_csv(f'data/output/{fname}.csv', index=False)
             st.toast(f'Features are saved to data/output/{fname}.csv')
-

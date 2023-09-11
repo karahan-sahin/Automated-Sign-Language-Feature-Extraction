@@ -1,8 +1,6 @@
 mediapipe
 streamlit
 sklearn
-keras
-pandas 
+pandas
 numpy
-tensorflow
-torch
+numba

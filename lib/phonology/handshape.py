@@ -9,10 +9,9 @@ from ..utils._math import getDistance, getCoordinates, getCosineAngle
 from sklearn.preprocessing import minmax_scale
 from lib.phonology.sign_utils import *
 from collections import defaultdict
+from typing import Dict, List
 
-
-HandFeatures = dict[str, int]
-
+HandFeatures = Dict[str, int]
 
 class HandshapePhonology():
     """The phonological information extraction from MediaPipe 
@@ -59,7 +58,7 @@ class HandshapePhonology():
     def getJointInfo(self, 
                      hand_pose: dict, 
                      body_pose: dict, 
-                     selected: list[str]) -> HandFeatures:
+                     selected: List[str]) -> HandFeatures:
         """Extracting static information from sign shape including:
             - Finger Selection/Coordination ( is_selected, is_curved, joint_angle )
             - Major/Minor Location
@@ -85,10 +84,10 @@ class HandshapePhonology():
             if 'ORIENTATION' in selected: INFO.update(self.getOrientation(hand_pose.landmark))
             
             SELECTION = [ getCoordinates(hand_pose.landmark[HAND_POINT2IDX[f'{joint}_TIP']]) for joint in[ 'THUMB',
-                                                                                  'INDEX_FINGER',
-                                                                                  'MIDDLE_FINGER',
-                                                                                  'RING_FINGER',
-                                                                                  'PINKY'] if INFO.get(f'{joint}_ANGLE_PIP_SELECT')  ]
+                                                                            'INDEX_FINGER',
+                                                                            'MIDDLE_FINGER',
+                                                                            'RING_FINGER',
+                                                                            'PINKY'] if INFO.get(f'{joint}_ANGLE_PIP_SELECT')  ]
             if SELECTION: CENTER = np.mean(SELECTION, axis=0)
             self.CENTER_HISTORY.append(CENTER)
 
@@ -110,8 +109,8 @@ class HandshapePhonology():
     def extractFingerInfo(self,
                           joint: str,
                           hand_pose: List[dict],
-                          is_selected: Callable[[int], bool],
-                          is_curved: Callable[[int, int], bool]) -> HandFeatures:
+                          is_selected,
+                          is_curved) -> HandFeatures:
         """_summary_
 
         Args:
@@ -229,8 +228,8 @@ class HandshapePhonology():
         HORIZONTAL_MAX = getDistance(getCoordinates(hand_pose[HAND_POINT2IDX.get('THUMB_CMC')]),getCoordinates(hand_pose[HAND_POINT2IDX.get('PINKY_MCP')]))
         
         # Differs between left and right hand
-        if  Y_HORIZONTAL > 0.0: INFO['PALM/BACK'] = 'palm' if self.HAND == 'Right' else 'back' 
-        else: INFO['PALM/BACK'] = 'back' if self.HAND == 'Right' else 'palm'
+        if  Y_HORIZONTAL > 0.0: INFO['PALM/BACK_LABEL'] = 'palm' if self.HAND == 'Right' else 'back' 
+        else: INFO['PALM/BACK_LABEL'] = 'back' if self.HAND == 'Right' else 'palm'
         INFO['PALM/BACK_SCORE'] = Y_HORIZONTAL if not self.normalize_orient else Y_HORIZONTAL / HORIZONTAL_MAX
 
         # Extract TIPS/WRIST feature
@@ -240,8 +239,8 @@ class HandshapePhonology():
         # Normalize with true vertical length
         VERTICAL_MAX = getDistance(getCoordinates(hand_pose[HAND_POINT2IDX.get('WRIST')]),getCoordinates(hand_pose[HAND_POINT2IDX.get('MIDDLE_FINGER_TIP')])) 
             
-        if  Z_VERTICAL > 0.0: INFO['TIPS/WRIST'] = 'tips' 
-        else: INFO['TIPS/WRIST'] = 'wrist'
+        if  Z_VERTICAL > 0.0: INFO['TIPS/WRIST_LABEL'] = 'tips' 
+        else: INFO['TIPS/WRIST_LABEL'] = 'wrist'
         INFO['TIPS/WRIST_SCORE'] = Z_VERTICAL if not self.normalize_orient else Z_VERTICAL / VERTICAL_MAX
 
         # Extract RADIAL/URNAL feature
@@ -249,8 +248,8 @@ class HandshapePhonology():
         # Find z diff -> horizontal orient 
         Z_HORIZONTAL = hand_pose[HAND_POINT2IDX.get('THUMB_CMC')].z - hand_pose[HAND_POINT2IDX.get('PINKY_MCP')].z
         
-        if  Z_VERTICAL > 0.0: INFO['RADIAL/URNAL'] = 'urnal' 
-        else: INFO['RADIAL/URNAL'] = 'radial'
+        if  Z_VERTICAL > 0.0: INFO['RADIAL/URNAL_LABEL'] = 'urnal' 
+        else: INFO['RADIAL/URNAL_LABEL'] = 'radial'
         INFO['RADIAL/URNAL_SCORE'] = Z_HORIZONTAL if not self.normalize_orient else Z_HORIZONTAL / HORIZONTAL_MAX
 
         return INFO

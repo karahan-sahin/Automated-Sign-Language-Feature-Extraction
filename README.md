@@ -62,6 +62,7 @@ The requirement for running the is `python>=3.9`. The installation command is gi
 git clone git@github.com:karahan-sahin/Automated-Sign-Language-Feature-Extraction.git
 conda env --name asl-fe python3.9
 conda activate asl-fe
+conda install pip
 pip install -r requirements.txt
 ```
 
@@ -94,15 +95,36 @@ Or the linguistic-feature extraction library:
 ```python
 import os
 import sys
+import mediapipe as mp
 from lib.phonology.temporal import TemporalPhonology
 from lib.phonology.handshape import HandshapePhonology
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(current_path, "Automated-Sign-Language-Feature-Extraction/lib"))
 
+mp_drawing = mp.solutions.drawing_utils
+mp_holistic = mp.solutions.holistic
+
 LEFT = HandshapePhonology('Left')
 RIGHT = HandshapePhonology('Right')
 TEMPORAL = TemporalPhonology(PARAMS['selected'])
+
+cam = cv2.VideoCapture()
+_, frame = cam.read()
+
+with mp_holistic.Holistic(min_detection_confidence=0.1, min_tracking_confidence=0.1) as holistic:
+
+        while cam.isOpened() and frame:
+            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = holistic.process(image)
+
+            RIGHT.getJointInfo(results.right_hand_landmarks, results.pose_landmarks, PARAMS['selected'])
+            LEFT.getJointInfo(results.left_hand_landmarks, results.pose_landmarks, PARAMS['selected'])
+            INFO = TEMPORAL.getTemporalInformation(LEFT, RIGHT)
+            CLASSIFIER.predict(CLASSIFIER.transform(TEMPORAL.HISTORY), topK=PARAMS['topK'])
+
+            ret, frame = PARAMS['camera'].read()
+
 ```
 
 ### 2. Sign Boundary Segmentation
@@ -111,8 +133,9 @@ TEMPORAL = TemporalPhonology(PARAMS['selected'])
 
 ### 3. Sign Classification
 
-- Work in Progress
-
+#### **Version 0:**
+- Baseline dense retrieval is implemented
+- Vector representations are extracted by 1D representation phonological feature sequence
 
 ## Requirements
 This tool requires the following Python libraries:

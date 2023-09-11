@@ -137,6 +137,10 @@ with mp_holistic.Holistic(min_detection_confidence=0.1, min_tracking_confidence=
 - Baseline dense retrieval is implemented
 - Vector representations are extracted by 1D representation phonological feature sequence
 
+
+https://github.com/karahan-sahin/Automated-Sign-Language-Feature-Extraction/assets/53216998/efbe140d-7935-4b9a-b028-68a3b0457a1e
+
+
 ## Requirements
 This tool requires the following Python libraries:
 - OpenCV

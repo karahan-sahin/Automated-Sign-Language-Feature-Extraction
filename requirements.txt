@@ -1,6 +1,7 @@
 mediapipe
 streamlit
-sklearn
+scikit-learn
 pandas
 numpy
 numba
+pympi-ling

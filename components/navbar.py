@@ -11,10 +11,12 @@ def navbar():
                     file_name for file_name in os.listdir('data/samples')]
 
     option = st.sidebar.selectbox('Select vids', videos)
+    
     if option != 'Camera': PARAMS['file_name'] = option.split('/')[-1].split('.')[0]
 
     camera = cv2.VideoCapture(0 if option == 'Camera' else option)
     PARAMS['camera'] = camera
+    PARAMS['option'] = option
     
     display = st.sidebar.selectbox(
         'Select metric', ('feature', 'boundary', 'classification'), index=2)

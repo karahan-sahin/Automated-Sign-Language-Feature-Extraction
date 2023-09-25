@@ -8,8 +8,8 @@ import pandas as pd
 from lib.phonology.handshape import *
 from lib.phonology.temporal import *
 from lib.phonology.classifier import *
+from lib.phonology.elan import ELANWriter
 from components.navbar import navbar
-
 
 if 'log' not in st.session_state:
     st.session_state.log = None
@@ -24,6 +24,8 @@ mp_holistic = mp.solutions.holistic
 FRAME_WINDOW = st.sidebar.image([])
 
 PARAMS = navbar()
+export_type = st.sidebar.selectbox( 'Select export option', ('Excel File', 'ELAN') )
+
 
 LEFT = HandshapePhonology('Left')
 RIGHT = HandshapePhonology('Right')
@@ -45,7 +47,6 @@ while PARAMS['run'] and not stop:
 
                 while PARAMS['camera'].isOpened():
 
-                    ret, frame = PARAMS['camera'].read()
                     image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     results = holistic.process(image)
                     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
@@ -70,12 +71,14 @@ while PARAMS['run'] and not stop:
                         if CLASSIFIER.LEXICON_MEMORY: st.dataframe(pd.DataFrame.from_records(CLASSIFIER.LEXICON_MEMORY[-20:]), height=750, use_container_width=True)
                         asyncio.run(CLASSIFIER.predict(CLASSIFIER.transform(TEMPORAL.HISTORY), topK=PARAMS['topK']))
 
-                    if idx % 10 == 0:
+                    ret, frame = PARAMS['camera'].read()
+
+                    if idx % 10 == 0 or not ret:
                         if PARAMS['display'] == 'feature':
                             st.session_state.log = TEMPORAL.HISTORY
                         if PARAMS['display'] == 'classification':
                             st.session_state.log = CLASSIFIER.LEXICON_MEMORY
-                            
+                    
                     idx+=1
                     
     except cv2.error:
@@ -88,10 +91,32 @@ if st.session_state.log:
     from datetime import datetime
     fname = st.text_input('File Name')
     save = st.button('Save Output')
+    
     if save:
-        if 'file_name' in PARAMS.keys():
-            pd.DataFrame.from_records(st.session_state.log).to_csv(f'data/output/{fname}.csv', index=False)
-            st.toast(f'Features are saved to data/output/{fname}.csv')
-        else:
-            pd.DataFrame.from_records(st.session_state.log).to_csv(f'data/output/{fname}.csv', index=False)
-            st.toast(f'Features are saved to data/output/{fname}.csv')
+
+        if export_type == 'Excel File':
+            if 'file_name' in PARAMS.keys():
+                pd.DataFrame.from_records(st.session_state.log).to_csv(f'data/output/{fname}.csv', index=False)
+                st.toast(f'Features are saved to data/output/{fname}.csv')
+            else:
+                pd.DataFrame.from_records(st.session_state.log).to_csv(f'data/output/{fname}.csv', index=False)
+                st.toast(f'Features are saved to data/output/{fname}.csv')
+        
+        if export_type == 'ELAN': 
+            
+            print(' ** Writing File **')
+            
+            EL = ELANWriter(
+                feature_df=pd.DataFrame.from_records(st.session_state.log),
+                video_path=PARAMS['option']
+            )
+            
+            EL.extractFeatures(
+                output_file='data/elan/'+fname
+            )
+            
+            st.toast(f'Features are written on ELAN to data/elan/{fname}.eaf')
+            
+            
+            print(' ** Written File **')
+            

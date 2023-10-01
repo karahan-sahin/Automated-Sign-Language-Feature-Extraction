@@ -9,6 +9,7 @@ class ELANWriter():
     def __init__(self, feature_df, video_path) -> None:
 
         self.FEATURE_DF = feature_df
+        self.processDf()
         self.video_file_path = video_path
 
         self.ELAN = Eaf(author='pympi')
@@ -18,6 +19,41 @@ class ELANWriter():
         self.VIDEO_FPS = None
         
         self.getVideoProperties()
+
+    def processDf(self):
+        
+        # Select Major Max Location
+        self.FEATURE_DF['RIGHT_LOCATION'] = self.FEATURE_DF[['RIGHT_HIP',  'RIGHT_CHEST',  'RIGHT_ARM', 'RIGHT_SHOULDER',  'RIGHT_EAR',  'RIGHT_MOUTH',  'RIGHT_EYE',  'RIGHT_NOSE' ]].apply(lambda x: x.sort_values().index[0], axis=1).to_list()
+        self.FEATURE_DF['LEFT_LOCATION'] = self.FEATURE_DF[['LEFT_HIP',  'LEFT_CHEST',  'LEFT_ARM', 'LEFT_SHOULDER',  'LEFT_EAR',  'LEFT_MOUTH',  'LEFT_EYE',  'LEFT_NOSE' ]].apply(lambda x: x.sort_values().index[0], axis=1).to_list()
+        
+        # Select Finger Conf. / Selected
+        self.handleFingerSelection( FTYPE = 'SELECT', HAND = 'RIGHT', JTYPE = 'PIP' )
+        self.handleFingerSelection( FTYPE = 'SELECT', HAND = 'LEFT', JTYPE = 'PIP' )
+        self.handleFingerSelection( FTYPE = 'CURVE', HAND = 'LEFT', JTYPE = 'PIP' )
+        self.handleFingerSelection( FTYPE = 'CURVE', HAND = 'RIGHT', JTYPE = 'PIP' )
+
+        
+    def handleFingerSelection(self,
+                              FTYPE = 'SELECT',
+                              HAND = 'RIGHT',
+                              JTYPE = 'PIP'):
+        
+        self.FEATURE_DF[f'{HAND}_{FTYPE}'] = self.FEATURE_DF[[
+            f'{HAND}_THUMB_ANGLE_{JTYPE}_{FTYPE}',
+            f'{HAND}_INDEX_FINGER_ANGLE_{JTYPE}_{FTYPE}',
+            f'{HAND}_MIDDLE_FINGER_ANGLE_{JTYPE}_{FTYPE}',
+            f'{HAND}_RING_FINGER_ANGLE_{JTYPE}_{FTYPE}',
+            f'{HAND}_PINKY_ANGLE_{JTYPE}_{FTYPE}'
+        ]].apply(lambda x: self.selectedFingers(x), axis=1)
+        
+
+    def selectedFingers(self, row: pd.Series): return 'all' if row.all() else '+'.join(list(map(lambda x: str(self.matchIdx(x)),row[row].index)))
+
+    def matchIdx(self, nn): 
+        JOINT_IDX = { 'THUMB': 1, 'INDEX': 2, 'MIDDLE': 3, 'RING': 4, 'PINKY': 5 }
+        for name, idx in JOINT_IDX.items():
+            if name in nn : return idx 
+
 
     def extractFeatures(self, strategy='basic', output_file='Untitled', params=dict | None):
 
@@ -55,7 +91,17 @@ class ELANWriter():
                                     seg_label, seg_start, idx-1)
 
                         seg_start = idx
-                        seg_label = label
+                        seg_label = str(label)
+                
+                try:
+                    self.ELAN.add_annotation(
+                            tier_name,
+                            seg_start,
+                            idx-1,
+                            value=seg_label,
+                            svg_ref=None) 
+                except: pass
+                
 
     def getVideoProperties(self):
 
@@ -98,7 +144,7 @@ class ELANWriter():
                     f'{HAND}_FINGER_COORDINATION_SELECTION', ling='default-lt', parent=f'{HAND}_FINGER_COORDINATION')
 
                 self.ELAN.add_tier(
-                    f'{HAND}_FINGER_COORDINATION_CURVED', ling='default-lt', parent=f'{HAND}_FINGER_COORDINATION')
+                    f'{HAND}_FINGER_COORDINATION_CURVE', ling='default-lt', parent=f'{HAND}_FINGER_COORDINATION')
 
                 self.ELAN.add_tier(
                     f'{HAND}_FINGER_COORDINATION_OPEN/CLOSE', ling='default-lt', parent=f'{HAND}_FINGER_COORDINATION')

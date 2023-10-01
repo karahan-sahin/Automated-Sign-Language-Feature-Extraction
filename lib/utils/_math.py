@@ -27,11 +27,17 @@ def getDistance(v1: np.array, v2: np.array):
     
     return np.sqrt( np.dot((v1 - v2).T, v1 - v2))
 
-def getCosineAngle(a, b, c):
+def getCosineAngle(a, b, c, z_=True):
 
-    a = np.array([a.x, a.y, a.z])
-    b = np.array([b.x, b.y, b.z])
-    c = np.array([c.x, c.y, c.z])
+    if z_:
+        a = np.array([a.x, a.y, a.z])
+        b = np.array([b.x, b.y, b.z])
+        c = np.array([c.x, c.y, c.z])
+    else:
+        a = np.array([a.x, a.y])
+        b = np.array([b.x, b.y])
+        c = np.array([c.x, c.y])
+        
 
     ba = a - b
     bc = c - b

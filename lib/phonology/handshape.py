@@ -130,6 +130,7 @@ class HandshapePhonology():
             hand_pose[PIP_IDX-1],
             hand_pose[PIP_IDX],
             hand_pose[PIP_IDX+1],
+            z_=False
         )
         
         # Calculate angle via centering lower joint of a given finger
@@ -138,6 +139,7 @@ class HandshapePhonology():
             hand_pose[DIP_IDX-1],
             hand_pose[DIP_IDX],
             hand_pose[DIP_IDX+1],
+            z_=False
         )
         
         # Calculate angle via centering wrist and lower joints as edges
@@ -145,6 +147,7 @@ class HandshapePhonology():
             hand_pose[PIP_IDX-1],
             hand_pose[0],
             hand_pose[PIP_IDX+1],
+            z_=False
         )
         
         # Calculate angle via centering wrist and higher joints as edges
@@ -152,24 +155,25 @@ class HandshapePhonology():
             hand_pose[DIP_IDX-1],
             hand_pose[0],
             hand_pose[DIP_IDX+1],
+            z_=False
         )
         
         return {
             
-            #f'{joint}_ANGLE_PIP': ANGLE_PIP if not self.normalize_location else ANGLE_PIP / 180,
+            f'{joint}_ANGLE_PIP': ANGLE_PIP if not self.normalize_location else ANGLE_PIP / 180,
             f'{joint}_ANGLE_DIP': ANGLE_DIP if not self.normalize_location else ANGLE_DIP / 180,
-            #f'{joint}_ANGLE_WRST_PIP': ANGLE_WRST_PIP if not self.normalize_location else ANGLE_WRST_PIP / 180,
-            #f'{joint}_ANGLE_WRST_DIP': ANGLE_WRST_DIP if not self.normalize_location else ANGLE_WRST_DIP / 180,
+            f'{joint}_ANGLE_WRST_PIP': ANGLE_WRST_PIP if not self.normalize_location else ANGLE_WRST_PIP / 180,
+            f'{joint}_ANGLE_WRST_DIP': ANGLE_WRST_DIP if not self.normalize_location else ANGLE_WRST_DIP / 180,
             
-            #f'{joint}_ANGLE_PIP_SELECT': is_selected(ANGLE_PIP),
+            f'{joint}_ANGLE_PIP_SELECT': is_selected(ANGLE_PIP),
             f'{joint}_ANGLE_DIP_SELECT': is_selected(ANGLE_DIP),
-            #f'{joint}_ANGLE_WRST_PIP_SELECT': is_selected(ANGLE_WRST_PIP),
-            #f'{joint}_ANGLE_WRST_DIP_SELECT': is_selected(ANGLE_WRST_DIP),         
+            f'{joint}_ANGLE_WRST_PIP_SELECT': is_selected(ANGLE_WRST_PIP),
+            f'{joint}_ANGLE_WRST_DIP_SELECT': is_selected(ANGLE_WRST_DIP),         
             
-            #f'{joint}_ANGLE_PIP_CURVE': is_curved(ANGLE_PIP),
+            f'{joint}_ANGLE_PIP_CURVE': is_curved(ANGLE_PIP),
             f'{joint}_ANGLE_DIP_CURVE': is_curved(ANGLE_DIP),
-            #f'{joint}_ANGLE_WRST_PIP_CURVE': is_curved(ANGLE_WRST_PIP),
-            #f'{joint}_ANGLE_WRST_DIP_CURVE': is_curved(ANGLE_WRST_DIP),    
+            f'{joint}_ANGLE_WRST_PIP_CURVE': is_curved(ANGLE_WRST_PIP),
+            f'{joint}_ANGLE_WRST_DIP_CURVE': is_curved(ANGLE_WRST_DIP),    
         
         }
 

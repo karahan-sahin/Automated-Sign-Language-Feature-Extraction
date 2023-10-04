@@ -1,12 +1,12 @@
 import cv2
+import numpy as np
 import pandas as pd
 from pympi.Elan import Eaf
-from .sign_utils import FEAT_TIER_MAP
-
+from .sign_utils import FEAT_TIER_MAP, NUMERICAL
 
 class ELANWriter():
 
-    def __init__(self, feature_df, video_path) -> None:
+    def __init__(self, feature_df, video_path, percentage, roll_window, threshold) -> None:
 
         self.FEATURE_DF = feature_df
         self.processDf()
@@ -19,6 +19,7 @@ class ELANWriter():
         self.VIDEO_FPS = None
         
         self.getVideoProperties()
+        self.parseSegments(percentage, roll_window, threshold)
 
     def processDf(self):
         
@@ -78,17 +79,17 @@ class ELANWriter():
                 for idx, label in list(enumerate(self.FEATURE_DF[col].replace(pd.NA, None).to_list())):
                     idx = int((idx / self.VIDEO_FPS) * 1000)
                     if seg_label != label:
-                        if seg_label != None:
-                            try:
-                                self.ELAN.add_annotation(
-                                    tier_name,
-                                    seg_start,
-                                    idx-1,
-                                    value=seg_label,
-                                    svg_ref=None)
-                            except ValueError:
-                                print('Cannot write annotation:',
-                                    seg_label, seg_start, idx-1)
+                        if seg_label != None and seg_label != '0':
+                            # try:
+                            self.ELAN.add_annotation(
+                                tier_name,
+                                seg_start,
+                                idx-1,
+                                value=seg_label,
+                                svg_ref=None)
+                            # except ValueError:
+                            #     print('Cannot write annotation:',
+                            #         seg_label, seg_start, idx-1)
 
                         seg_start = idx
                         seg_label = str(label)
@@ -122,6 +123,11 @@ class ELANWriter():
 
     def createFile(self,
                    selected=['FINGER_COORDINATION', 'MANNER', 'ORIENTATION', 'LOCATION']):
+
+        self.ELAN.add_tier(
+            'GLOSS-SEGMENTS',
+            ling='default-lt'
+        )
 
         self.ELAN.add_tier(
             'MANUAL',
@@ -227,3 +233,25 @@ class ELANWriter():
             file_path=self.video_file_path,
             mimetype='mp4'
         )
+
+    def parseSegments(self, percentage='75%', roll=10, threshold = 0.3):
+
+        pltt = self.FEATURE_DF[NUMERICAL]
+
+        pltt = pltt.replace(np.nan, 0)
+
+        mov = pd.Series(np.zeros(pltt.shape[0]))
+
+        for col in NUMERICAL:
+            mov+= (pltt[col].rolling(roll).mean()) 
+            
+        pltt['mov'] = mov 
+        diff = []
+        for idx, dd in enumerate(pltt['mov'].to_list()[:-1]):
+            diff.append(abs(dd - pltt['mov'].to_list()[idx+1]))
+        pltt['mov_rl'] = [0]+diff 
+        #pltt['mov_rl'] = pltt['mov_rl'].apply(lambda x: min(x*100, 100_000)) 
+        self.FEATURE_DF['GLOSS-SEGMENTS'] = pltt[pltt.columns[-1]].apply(lambda x: 1 if x > pltt[pltt.columns[-1]].describe()[percentage] else 0)
+        
+        
+        self.FEATURE_DF['GLOSS-SEGMENTS'] = self.FEATURE_DF['GLOSS-SEGMENTS'].rolling(roll).mean().replace(np.nan, 0).apply(lambda x: '0' if x >= threshold else '1')

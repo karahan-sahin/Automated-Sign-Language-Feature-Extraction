@@ -130,7 +130,7 @@ class HandshapePhonology():
             hand_pose[PIP_IDX-1],
             hand_pose[PIP_IDX],
             hand_pose[PIP_IDX+1],
-            z_=False
+            z_=True
         )
         
         # Calculate angle via centering lower joint of a given finger
@@ -139,7 +139,7 @@ class HandshapePhonology():
             hand_pose[DIP_IDX-1],
             hand_pose[DIP_IDX],
             hand_pose[DIP_IDX+1],
-            z_=False
+            z_=True
         )
         
         # Calculate angle via centering wrist and lower joints as edges
@@ -147,7 +147,7 @@ class HandshapePhonology():
             hand_pose[PIP_IDX-1],
             hand_pose[0],
             hand_pose[PIP_IDX+1],
-            z_=False
+            z_=True
         )
         
         # Calculate angle via centering wrist and higher joints as edges
@@ -155,7 +155,7 @@ class HandshapePhonology():
             hand_pose[DIP_IDX-1],
             hand_pose[0],
             hand_pose[DIP_IDX+1],
-            z_=False
+            z_=True
         )
         
         return {

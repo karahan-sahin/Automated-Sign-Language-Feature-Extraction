@@ -4,12 +4,15 @@ import cv2
 import asyncio
 import streamlit as st
 import mediapipe as mp
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 import pandas as pd
 from lib.phonology.handshape import *
 from lib.phonology.temporal import *
 from lib.phonology.classifier import *
 from lib.phonology.elan import ELANWriter
 from components.navbar import navbar
+from PIL import Image
 
 if 'log' not in st.session_state:
     st.session_state.log = None
@@ -20,6 +23,14 @@ st.title("Sign Phonological Feature Detection")
 
 mp_drawing = mp.solutions.drawing_utils
 mp_holistic = mp.solutions.holistic
+
+# base_options_handshape = python.BaseOptions(model_asset_path = 'models/handshape.task')
+# options_handshape = vision.GestureRecognizerOptions(base_options = base_options_handshape)
+# recognizer_handshape = vision.GestureRecognizer.create_from_options(options_handshape)
+
+# base_options_location = python.BaseOptions(model_asset_path = 'models/location.task')
+# options_location = vision.GestureRecognizerOptions(base_options = base_options_location)
+# recognizer_location = vision.GestureRecognizer.create_from_options(options_location)
 
 FRAME_WINDOW = st.sidebar.image([])
 
@@ -49,7 +60,11 @@ while PARAMS['run'] and not stop:
 
                     image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     results = holistic.process(image)
+                    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+                    # handshape_recognition_result = recognizer_handshape.recognize(mp_image)
+                    # location_recognition_result = recognizer_location.recognize(mp_image)
                     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+                    
                     mp_drawing.draw_landmarks(image, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
                     mp_drawing.draw_landmarks(image, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
                     mp_drawing.draw_landmarks(image, results.pose_landmarks, mp_holistic.POSE_CONNECTIONS)
@@ -68,8 +83,22 @@ while PARAMS['run'] and not stop:
                         st.line_chart(RIGHT.CENTER_HISTORY)
                         
                     if PARAMS['display'] == 'classification':
-                        if CLASSIFIER.LEXICON_MEMORY: st.dataframe(pd.DataFrame.from_records(CLASSIFIER.LEXICON_MEMORY[-20:]), height=750, use_container_width=True)
-                        asyncio.run(CLASSIFIER.predict(CLASSIFIER.transform(TEMPORAL.HISTORY), topK=PARAMS['topK']))
+                        # if handshape_recognition_result.gestures:
+                        #     cat =handshape_recognition_result.gestures[0][0].category_name
+                        #     if cat:
+                        #         image = Image.open('images/handshapes/'+cat+'.png')
+                        #         #st.image(image, caption=cat)
+                        #         #st.write(handshape_recognition_result) 
+                        # if location_recognition_result.gestures:
+                        #     cat =location_recognition_result.gestures[0][0].category_name
+                        #     if cat:
+                        #         image = Image.open('images/location/'+cat+'.png')
+                        #         st.image(image, caption=cat)
+                        #         #st.write(location_recognition_result) 
+                        pass
+                                
+                        #if CLASSIFIER.LEXICON_MEMORY: st.dataframe(pd.DataFrame.from_records(CLASSIFIER.LEXICON_MEMORY[-20:]), height=750, use_container_width=True)
+                        #asyncio.run(CLASSIFIER.predict(CLASSIFIER.transform(TEMPORAL.HISTORY), topK=PARAMS['topK']))
 
                     ret, frame = PARAMS['camera'].read()
 
@@ -108,7 +137,10 @@ if st.session_state.log:
             
             EL = ELANWriter(
                 feature_df=pd.DataFrame.from_records(st.session_state.log),
-                video_path=PARAMS['option']
+                video_path=PARAMS['option'],
+                percentage=PARAMS['percentage'],
+                roll_window=PARAMS['roll'],
+                threshold=PARAMS['threshold'],
             )
             
             EL.extractFeatures(

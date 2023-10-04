@@ -29,10 +29,14 @@ lib/models/*/*
 data/corpus/*
 data/vectors/pose
 data/vectors/feats
+data/elan/
 
 dump/*
 .DS_Store
 .vscode/
+
+corpus/
+videos/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

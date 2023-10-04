@@ -6,11 +6,16 @@ import streamlit as st
 def navbar():
     
     PARAMS = {}
+        
+    def fetchFile(fname, idx):
+        idx += 1
+        SUB_FOLDER = st.sidebar.selectbox(f'Select data source - sub{idx}', os.listdir(fname))
+        if SUB_FOLDER.split('.')[-1] != 'mp4':
+            return fetchFile(fname+SUB_FOLDER+'/', idx)
+        else:
+            return fname+SUB_FOLDER
     
-    videos = ['Camera'] + ['data/samples/' +
-                    file_name for file_name in os.listdir('data/samples')]
-
-    option = st.sidebar.selectbox('Select vids', videos)
+    option = fetchFile('data/', 0)
     
     if option != 'Camera': PARAMS['file_name'] = option.split('/')[-1].split('.')[0]
 
@@ -18,11 +23,19 @@ def navbar():
     PARAMS['camera'] = camera
     PARAMS['option'] = option
     
+    
+    PARAMS['percentage'] = st.sidebar.selectbox(f'Select Segment Percentage', ['50%', '75%', 'mean', 'std'])
+    PARAMS['roll'] = st.sidebar.selectbox(f'Select Roll window', [1, 2, 5 , 7, 10])
+    
+    threshold = st.sidebar.number_input('Give Segment Threshold', min_value=0.1, max_value=0.9)
+    PARAMS['threshold']  = threshold
+
+    
     display = st.sidebar.selectbox(
-        'Select metric', ('feature', 'boundary', 'classification'), index=2)
+        'Select metric', ('feature', 'classification'), index=0)
 
     PARAMS['display'] = display
-
+    
     if display == 'feature':
         selected = st.sidebar.multiselect(
             'Select metric', ('LOCATION', 'ORIENTATION', 'FINGER_SELECTION', 'Path', 'Spacial', 'Temporal', 'Setting'), default=['LOCATION', 'ORIENTATION', 'FINGER_SELECTION', 'Path', 'Spacial', 'Temporal', 'Setting'])

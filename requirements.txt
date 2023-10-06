@@ -5,3 +5,4 @@ pandas
 numpy
 numba
 pympi-ling
+hydralit_components

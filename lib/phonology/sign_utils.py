@@ -239,3 +239,63 @@ NUMERICAL = [
  'IN_FRONT_SCORE',
  'ABOVE/BELOW_SCORE',
  'LEFT_SETTING_SCORE',]
+
+
+
+FEAT_HIERARCHY = {
+    
+    'FINGER_SELECTION':  [
+            '_THUMB_ANGLE_PIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_THUMB_ANGLE_DIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_THUMB_ANGLE_WRST_PIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_THUMB_ANGLE_WRST_DIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_INDEX_FINGER_ANGLE_PIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_INDEX_FINGER_ANGLE_DIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_INDEX_FINGER_ANGLE_WRST_PIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_INDEX_FINGER_ANGLE_WRST_DIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_MIDDLE_FINGER_ANGLE_PIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_MIDDLE_FINGER_ANGLE_DIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_MIDDLE_FINGER_ANGLE_WRST_PIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_MIDDLE_FINGER_ANGLE_WRST_DIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_RING_FINGER_ANGLE_PIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_RING_FINGER_ANGLE_DIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_RING_FINGER_ANGLE_WRST_PIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_RING_FINGER_ANGLE_WRST_DIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_PINKY_ANGLE_PIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_PINKY_ANGLE_DIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_PINKY_ANGLE_WRST_PIP_', # LEFT/RIGHT + SELECT/CURVE
+            '_PINKY_ANGLE_WRST_DIP_', # LEFT/RIGHT + SELECT/CURVE
+    ],
+        
+    'LOCATION': [
+        'HIP',
+        'CHEST',
+        'ARM',
+        'SHOULDER',
+        'EAR',
+        'MOUTH',
+        'EYE',
+        'NOSE',   
+    ],
+    
+    
+    'MOVEMENT': {
+        
+        'SPACIAL': [
+            'IN_FRONT_LABEL',
+            'ABOVE/BELOW_LABEL',
+        ],
+        'TEMPORAL': [
+            
+        ],
+        'PATH': [
+            
+        ]
+    },
+    
+    'ORIENTATION': [
+        '_PALM/BACK_LABEL', # HAND + value
+        '_TIPS/WRIST_LABEL', # HAND + value
+        '_RADIAL/URNAL_LABEL', # HAND + value
+    ],   
+}

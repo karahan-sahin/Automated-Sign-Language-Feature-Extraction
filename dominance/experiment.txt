@@ -1,0 +1,13 @@
+The Symmetry Condition states that (a) if both hands of a sign move
+independently during their articulation, then (b) both hands must be
+specified for the same handshape, the same movement (whether 
+46
+performed simultaneously or in alternation), and the specifications
+for orientation must be either symmetrical or identical.
+
+
+**The Dominance Condition** states that (a) if the hands of a twohanded sign do not share the same specification for handshape (i.e.,
+they are different), then (b) one hand must be passive while the active
+hand articulates the movement and (c) the specification of the passive
+handshape is restricted to the small set of unmarked handshapes: 
+A, S, B, G, C, O. 

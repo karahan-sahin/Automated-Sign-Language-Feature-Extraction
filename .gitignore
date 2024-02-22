@@ -5,6 +5,9 @@ __pycache__/
 
 # C extensions
 *.so
+data/*
+dominance/left
+outputs/
 
 # Distribution / packaging
 .Python

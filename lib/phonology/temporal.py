@@ -147,6 +147,12 @@ class TemporalPhonology():
 
         INFO = {}
 
+        # PROXIMAL -> DISTAL (BODY INNER-TO-OUTER)
+        # DOMINANT SIDE (SINGLE HAND)
+        # TODO: 
+        #   X: LEFT-TO-RIGHT
+        #   Y: UP-TO-DOWN
+        #   Z: INNER TO OUTER (DISTAL) - OUTER TO INNER (PROXIMAL) 
         if left.INFO and len(left.CENTER_HISTORY) > 2:
             # SETTING
             INFO['LEFT_SETTING_LABEL'] = 'high' if left.CENTER_HISTORY[-2][1] > left.CENTER_HISTORY[-1][1] else 'low'
